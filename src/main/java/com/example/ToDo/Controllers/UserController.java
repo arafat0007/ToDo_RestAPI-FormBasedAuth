@@ -1,10 +1,8 @@
 package com.example.ToDo.Controllers;
 
 import com.example.ToDo.Domain.RegistrationRequest;
-import com.example.ToDo.Repositories.UserRepository;
 import com.example.ToDo.Services.UserService;
 import lombok.AllArgsConstructor;
-import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
