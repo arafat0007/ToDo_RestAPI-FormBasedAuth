@@ -30,6 +30,9 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public TaskDTO createTask(TaskDTO taskDTO, ModelMap model) {
+        if (taskDTO.getTitle().isEmpty()){
+            throw new IllegalArgumentException("Title of task can not be null");
+        }
         Task newTask = new Task();
         newTask.setTitle(taskDTO.getTitle());
         newTask.setDescription(taskDTO.getDescription());
@@ -62,7 +65,7 @@ public class TaskServiceImpl implements TaskService {
     public TaskDTO editTask(long taskId, TaskDTO taskDTO, ModelMap model) {
         Task existingTask = getExistingTask(taskId, model);
         if(existingTask == null){
-            new RuntimeException("Task not found to Show");
+            throw new IllegalArgumentException("Task not found to Show");
         }
 
         existingTask.setTitle(taskDTO.getTitle());
@@ -80,7 +83,7 @@ public class TaskServiceImpl implements TaskService {
     public TaskDTO showTask(long taskId, ModelMap model) {
         Task existingTask = getExistingTask(taskId, model);
         if(existingTask == null){
-            new RuntimeException("Task not found to Show");
+            throw new IllegalArgumentException("Task not found to Show");
         }
         return taskToTaskDTO.convert(existingTask);
     }
@@ -91,7 +94,7 @@ public class TaskServiceImpl implements TaskService {
         //System.out.println("delete task id "+existingTask.getId());
 
         if(existingTask == null){
-            new RuntimeException("Task not found to Show");
+            throw new IllegalArgumentException("Task not found to Show");
         }
         taskRepository.deleteById(existingTask.getId());
     }
