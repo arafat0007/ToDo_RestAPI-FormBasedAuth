@@ -3,7 +3,6 @@ package com.example.ToDo.Domain;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -13,8 +12,13 @@ import java.time.LocalDateTime;
 @Entity
 public class Token {
     @Id
+    //for UUID
+//    @GeneratedValue(generator = "uuid2")
+//    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+//    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "VARCHAR(36)")
+//    @Type(type = "uuid-char")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
     @Column(nullable = false)
     private String token;
 

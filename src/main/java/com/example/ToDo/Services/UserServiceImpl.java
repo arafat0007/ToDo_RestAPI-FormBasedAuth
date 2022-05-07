@@ -1,15 +1,14 @@
 package com.example.ToDo.Services;
 
-import com.example.ToDo.Domain.RegistrationRequest;
-import com.example.ToDo.Domain.Token;
-import com.example.ToDo.Domain.User;
-import com.example.ToDo.Domain.UserRole;
+import com.example.ToDo.Domain.*;
 import com.example.ToDo.Repositories.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.ModelMap;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,10 +19,8 @@ public class UserServiceImpl implements UserService {
     private final static String USER_NOT_FOUND_MSG = "user with email %s not found";
 
     private final UserRepository userRepository;
-    //private final EmailValidatorService emailValidatorService;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final TokenServiceImpl tokenServiceImpl;
-    //private final EmailSenderService emailSenderService;
     private final EmailService emailService;
 
     @Override
@@ -32,6 +29,15 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UsernameNotFoundException(String.format(USER_NOT_FOUND_MSG, email)));
     }
 
+    @Override
+    public User findUserByEmail(String loggedInUserEmail) {
+        return userRepository.findByEmail(loggedInUserEmail).orElseThrow(() -> new RuntimeException("user not found after filtering by given email"));
+    }
+
+    @Override
+    public void saveUser(User user) {
+        userRepository.save(user);
+    }
 
     public String userRegister(RegistrationRequest request) {
         boolean isValidEmail = emailService.test(request.getEmail());
@@ -41,15 +47,7 @@ public class UserServiceImpl implements UserService {
         }
 
         //signup user and save token
-        String token = SignUpUserAndCreateToken(
-                new User(
-                        request.getFirstName(),
-                        request.getLastName(),
-                        request.getEmail(),
-                        request.getPassword(),
-                        UserRole.USER
-                )
-        );
+        String token = SignUpUserAndCreateToken(request);
 
         //Send Email with confirmation token
         String TokenConfirmationURL = "http://localhost:8080/registration/confirm?token=" +token;
@@ -128,8 +126,8 @@ public class UserServiceImpl implements UserService {
                 "</div></div>";
     }
 
-    private String SignUpUserAndCreateToken(User registerUser) {
-        boolean isUserExist = userRepository.findByEmail(registerUser.getEmail()).isPresent();
+    private String SignUpUserAndCreateToken(RegistrationRequest request) {
+        boolean isUserExist = userRepository.findByEmail(request.getEmail()).isPresent();
 
         if(isUserExist){
             // TODO check of attributes are the same and
@@ -138,10 +136,18 @@ public class UserServiceImpl implements UserService {
             throw new IllegalStateException("email already taken");
         }
 
-        String encodedPassword = bCryptPasswordEncoder.encode(registerUser.getPassword());
-        registerUser.setPassword(encodedPassword);
+        //creating new user with request data
+        User user = new User();
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setEmail(request.getEmail());
+        user.setUserRole(UserRole.USER);
 
-        userRepository.save(registerUser);
+        String encodedPassword = bCryptPasswordEncoder.encode(request.getPassword());
+        user.setPassword(encodedPassword);
+
+        //save user to Database
+        userRepository.save(user);
 
         //Saving Token to use when user will try to confirm email
         String tokenContent = UUID.randomUUID().toString();
@@ -150,9 +156,10 @@ public class UserServiceImpl implements UserService {
                 tokenContent,
                 LocalDateTime.now(),
                 LocalDateTime.now().plusMinutes(30),
-                registerUser
+                user
         );
 
+        //Save token to Database
         tokenServiceImpl.saveToken(token);
 
         return tokenContent;
@@ -171,6 +178,7 @@ public class UserServiceImpl implements UserService {
             throw new IllegalStateException("token expired");
         }
 
+
         //if above conditions are ok, so confirm now
         confirmToken.setConfirmedAt(LocalDateTime.now());
         tokenServiceImpl.UpdateToken(confirmToken);
@@ -179,5 +187,16 @@ public class UserServiceImpl implements UserService {
         userRepository.enableAppUser(confirmToken.getUser().getEmail());
 
         return "Email is confirmed";
+    }
+
+    @Override
+    public String getLoggedInUserName(ModelMap model) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+
+        return principal.toString();
     }
 }

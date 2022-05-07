@@ -7,16 +7,15 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping(path = "/registration")
 public class UserController {
     private final UserService userService;
 
-    @PostMapping
+    @PostMapping(path = "/registration")
     public String UserRegister(@RequestBody RegistrationRequest request){
         return userService.userRegister(request);
     }
 
-    @GetMapping(path = "/confirm")
+    @GetMapping(path = "/registration/confirm")
     public String confirm(@RequestParam("token") String token) {
         return userService.confirmToken(token);
     }
