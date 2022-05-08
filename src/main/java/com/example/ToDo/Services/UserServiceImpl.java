@@ -3,6 +3,11 @@ package com.example.ToDo.Services;
 import com.example.ToDo.Domain.*;
 import com.example.ToDo.Repositories.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -11,23 +16,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.ui.ModelMap;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
 @AllArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService{
     private final static String USER_NOT_FOUND_MSG = "user with email %s not found";
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final TokenServiceImpl tokenServiceImpl;
     private final EmailService emailService;
-
-    @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException(String.format(USER_NOT_FOUND_MSG, email)));
-    }
 
     @Override
     public User findUserByEmail(String loggedInUserEmail) {
@@ -178,7 +179,6 @@ public class UserServiceImpl implements UserService {
             throw new IllegalStateException("token expired");
         }
 
-
         //if above conditions are ok, so confirm now
         confirmToken.setConfirmedAt(LocalDateTime.now());
         tokenServiceImpl.UpdateToken(confirmToken);
@@ -190,7 +190,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String getLoggedInUserName(ModelMap model) {
+    public String getLoggedInUserName() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
         if (principal instanceof UserDetails) {
@@ -198,5 +198,46 @@ public class UserServiceImpl implements UserService {
         }
 
         return principal.toString();
+    }
+
+    //This method will be called when "/login" post req is hit
+    //it is used to authenticate user credentials
+    @Override
+    public Authentication authenticate(Authentication auth) throws AuthenticationException {
+        Authentication retVal = null;
+
+        if (auth != null)
+        {
+            //User data provided from login form
+            String email = auth.getName();
+            String password = auth.getCredentials().toString();
+
+            //User in DB with provided email while login
+            User user = userRepository.findByEmail(email).get();
+
+            if (email.equals(user.getEmail()) && bCryptPasswordEncoder.matches(password, user.getPassword()))
+            {
+
+                retVal = new UsernamePasswordAuthenticationToken(
+                        email, "", user.getAuthorities()
+                );
+                System.out.println("grant User");
+            }
+        }
+        else
+        {
+            System.out.println("invalid login");
+            retVal = new UsernamePasswordAuthenticationToken(
+                    null, null, null
+            );
+            System.out.println("bad Login");
+        }
+
+        return retVal;
+    }
+
+    @Override
+    public boolean supports(Class<?> tokenType) {
+        return tokenType.equals(UsernamePasswordAuthenticationToken.class);
     }
 }
