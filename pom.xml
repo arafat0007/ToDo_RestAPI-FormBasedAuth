@@ -89,6 +89,7 @@
 				</configuration>
 			</plugin>
 		</plugins>
+		<finalName>todoformauth</finalName>
 	</build>
 
 </project>
